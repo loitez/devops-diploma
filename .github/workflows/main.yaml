@@ -9,27 +9,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4 # Обновили до v4
 
-      # Вместо ручной установки через curl:
-      - name: Yandex Cloud CLI setup
-        uses: yandex-cloud/ae-setup-yc@v1
+      - name: Login to Yandex Container Registry
+        uses: yc-actions/yc-cr-login@v2 # Обновили до v2
         with:
+          # Исправили название параметра:
           yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_KEY }}
 
-      - name: Get K8s Config
+      - name: Build and Push Docker Image
         run: |
-          # Теперь yc доступен везде
-          yc managed-kubernetes cluster get-credentials ${{ secrets.YC_K8S_CLUSTER_ID }} --external
-
-      - name: Helm Deploy
-        run: |
-          # Helm уже предустановлен на ubuntu-latest, curl не нужен
-          helm upgrade --install my-release ./my-app-chart \
-            --set image=cr.yandex/${{ secrets.YC_REGISTRY_ID }}/diploma-app:${{ github.sha }}
-  
-  
-  
+          docker build -t cr.yandex/${{ secrets.YC_REGISTRY_ID }}/diploma-app:${{ github.sha }} .
+          docker push cr.yandex/${{ secrets.YC_REGISTRY_ID }}/diploma-app:${{ github.sha }}
 
   deploy:
     needs: build-and-push
@@ -38,24 +29,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install YC CLI
-        run: |
-          curl -sSL https://yandexcloud.net | bash -s -- -n
-          echo "$HOME/yandex-cloud/bin" >> $GITHUB_PATH
+      # 1. Официальный экшен для установки YC CLI
+      - name: Install Yandex Cloud CLI
+        uses: yc-actions/setup-yc@v1
+        with:
+          yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_KEY }}
 
+      # 2. Получение конфига (теперь команда yc точно будет в PATH)
       - name: Get K8s Config
         run: |
-          # Используем полный путь к бинарнику, чтобы наверняка
-          export PATH=$PATH:$HOME/yandex-cloud/bin
-          echo '${{ secrets.YC_SA_JSON_KEY }}' > sa-key.json
-          yc config profile create sa-profile
-          yc config set service-account-key sa-key.json
           yc managed-kubernetes cluster get-credentials ${{ secrets.YC_K8S_CLUSTER_ID }} --external
 
+      # 3. Установка Helm
+      - name: Install Helm
+        run: |
+          curl https://githubusercontent.com | bash
+
+      # 4. Деплой
       - name: Helm Deploy
         run: |
-          # Установка Helm (в Ubuntu это быстрее через скрипт)
-          curl https://githubusercontent.com | bash
-          # Деплой
           helm upgrade --install my-release ./my-app-chart \
             --set image=cr.yandex/${{ secrets.YC_REGISTRY_ID }}/diploma-app:${{ github.sha }}
