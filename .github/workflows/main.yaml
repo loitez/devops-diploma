@@ -30,8 +30,7 @@ jobs:
 
       - name: Deploy to K8s
         run: |
-          # 1. Скачиваем yc (используем зеркало storage с повторами)
-          curl -sSL --retry 5 https://yandexcloud.net -o ./yc
+          curl -sSL --retry 5 https://storage.yandexcloud.net -o ./yc
           chmod +x ./yc
           
           # 2. Скачиваем Helm
