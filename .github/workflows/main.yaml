@@ -29,24 +29,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 1. Официальный экшен для установки YC CLI
-      - name: Install Yandex Cloud CLI
-        uses: yc-actions/setup-yc@v1
-        with:
-          yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_KEY }}
-
-      # 2. Получение конфига (теперь команда yc точно будет в PATH)
-      - name: Get K8s Config
+      - name: Install Tools (YC and Helm)
         run: |
-          yc managed-kubernetes cluster get-credentials ${{ secrets.YC_K8S_CLUSTER_ID }} --external
-
-      # 3. Установка Helm
-      - name: Install Helm
-        run: |
+          curl -sSL https://yandexcloud.net | bash -s -- -n
+          
           curl https://githubusercontent.com | bash
 
-      # 4. Деплой
-      - name: Helm Deploy
+      - name: Configure K8s Access and Deploy
         run: |
+          export PATH=$PATH:$HOME/yandex-cloud/bin
+          
+          # Авторизация через файл ключа
+          echo '${{ secrets.YC_SA_JSON_KEY }}' > sa-key.json
+          yc config profile create sa-profile
+          yc config set service-account-key sa-key.json
+          
+          yc managed-kubernetes cluster get-credentials ${{ secrets.YC_K8S_CLUSTER_ID }} --external
+          
           helm upgrade --install my-release ./my-app-chart \
             --set image=cr.yandex/${{ secrets.YC_REGISTRY_ID }}/diploma-app:${{ github.sha }}
