@@ -2,3 +2,7 @@ secrets.ps1
 .terraform/
 terraform.tfstate*
 .idea
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+key.json
