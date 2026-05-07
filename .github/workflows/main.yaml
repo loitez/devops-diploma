@@ -9,18 +9,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4 # Обновили до v4
+        uses: actions/checkout@v4
 
-      - name: Login to Yandex Container Registry
-        uses: yc-actions/yc-cr-login@v2 # Обновили до v2
+      # Вместо ручной установки через curl:
+      - name: Yandex Cloud CLI setup
+        uses: yandex-cloud/ae-setup-yc@v1
         with:
-          # Исправили название параметра:
           yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_KEY }}
 
-      - name: Build and Push Docker Image
+      - name: Get K8s Config
         run: |
-          docker build -t cr.yandex/${{ secrets.YC_REGISTRY_ID }}/diploma-app:${{ github.sha }} .
-          docker push cr.yandex/${{ secrets.YC_REGISTRY_ID }}/diploma-app:${{ github.sha }}
+          # Теперь yc доступен везде
+          yc managed-kubernetes cluster get-credentials ${{ secrets.YC_K8S_CLUSTER_ID }} --external
+
+      - name: Helm Deploy
+        run: |
+          # Helm уже предустановлен на ubuntu-latest, curl не нужен
+          helm upgrade --install my-release ./my-app-chart \
+            --set image=cr.yandex/${{ secrets.YC_REGISTRY_ID }}/diploma-app:${{ github.sha }}
+  
+  
+  
 
   deploy:
     needs: build-and-push
