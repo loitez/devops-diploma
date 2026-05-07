@@ -27,18 +27,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4 # Обновили до v4
+        uses: actions/checkout@v4
+
+      - name: Install YC CLI
+        run: |
+          curl -sSL https://yandexcloud.net | bash
+          echo "$HOME/yandex-cloud/bin" >> $GITHUB_PATH
 
       - name: Install Helm
         run: |
           curl https://githubusercontent.com | bash
 
       - name: Get K8s Config
-        uses: yc-actions/yc-managed-kubernetes-get-credentials@v2
-        with:
-          # И здесь тоже исправили название:
-          yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_KEY }}
-          cluster-id: ${{ secrets.YC_K8S_CLUSTER_ID }}
+        run: |
+          # Создаем файл ключа из секрета
+          echo '${{ secrets.YC_SA_JSON_KEY }}' > sa-key.json
+          # Авторизуемся в YC
+          $HOME/yandex-cloud/bin/yc config profile create sa-profile
+          $HOME/yandex-cloud/bin/yc config set service-account-key sa-key.json
+          # Получаем конфиг кубера
+          $HOME/yandex-cloud/bin/yc managed-kubernetes cluster get-credentials ${{ secrets.YC_K8S_CLUSTER_ID }} --external
 
       - name: Helm Deploy
         run: |
