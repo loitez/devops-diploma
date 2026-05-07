@@ -31,24 +31,22 @@ jobs:
 
       - name: Install YC CLI
         run: |
-          curl -sSL https://yandexcloud.net | bash
+          curl -sSL https://yandexcloud.net | bash -s -- -n
           echo "$HOME/yandex-cloud/bin" >> $GITHUB_PATH
-
-      - name: Install Helm
-        run: |
-          curl https://githubusercontent.com | bash
 
       - name: Get K8s Config
         run: |
-          # Создаем файл ключа из секрета
+          # Используем полный путь к бинарнику, чтобы наверняка
+          export PATH=$PATH:$HOME/yandex-cloud/bin
           echo '${{ secrets.YC_SA_JSON_KEY }}' > sa-key.json
-          # Авторизуемся в YC
-          $HOME/yandex-cloud/bin/yc config profile create sa-profile
-          $HOME/yandex-cloud/bin/yc config set service-account-key sa-key.json
-          # Получаем конфиг кубера
-          $HOME/yandex-cloud/bin/yc managed-kubernetes cluster get-credentials ${{ secrets.YC_K8S_CLUSTER_ID }} --external
+          yc config profile create sa-profile
+          yc config set service-account-key sa-key.json
+          yc managed-kubernetes cluster get-credentials ${{ secrets.YC_K8S_CLUSTER_ID }} --external
 
       - name: Helm Deploy
         run: |
+          # Установка Helm (в Ubuntu это быстрее через скрипт)
+          curl https://githubusercontent.com | bash
+          # Деплой
           helm upgrade --install my-release ./my-app-chart \
             --set image=cr.yandex/${{ secrets.YC_REGISTRY_ID }}/diploma-app:${{ github.sha }}
