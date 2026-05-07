@@ -34,7 +34,7 @@ jobs:
           curl https://githubusercontent.com | bash
 
       - name: Get K8s Config
-        uses: yc-actions/yc-managed-kubernetes-get-creds@v2 # Обновили до v2
+        uses: yc-actions/yc-managed-kubernetes-get-credentials@v2
         with:
           # И здесь тоже исправили название:
           yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_KEY }}

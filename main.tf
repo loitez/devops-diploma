@@ -142,3 +142,9 @@ resource "yandex_resourcemanager_folder_iam_member" "k8s-vpc-public-admin" {
   role      = "vpc.publicAdmin"
   member    = "serviceAccount:${yandex_iam_service_account.k8s-sa.id}"
 }
+
+resource "yandex_resourcemanager_folder_iam_member" "images-pusher" {
+  folder_id = "b1gr6f3vahpkkk2de11c"
+  role      = "container-registry.images.pusher"
+  member    = "serviceAccount:${yandex_iam_service_account.k8s-sa.id}"
+}
