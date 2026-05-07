@@ -9,12 +9,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4 # Обновили до v4
+        uses: actions/checkout@v4
 
       - name: Login to Yandex Container Registry
-        uses: yc-actions/yc-cr-login@v2 # Обновили до v2
+        uses: yc-actions/yc-cr-login@v2
         with:
-          # Исправили название параметра:
           yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_KEY }}
 
       - name: Build and Push Docker Image
@@ -25,26 +24,29 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-    # Используем готовый образ от Яндекса, где всё уже есть
-    container:
-      image: cr.yandex/yc/yc-slim-frozen:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to K8s
+      - name: Install YC CLI and Helm
         run: |
-          # 1. Авторизация (в этом образе yc уже в PATH)
-          echo '${{ secrets.YC_SA_JSON_KEY }}' > sa-key.json
-          yc config profile create sa-profile
-          yc config set service-account-key sa-key.json
-          
-          # 2. Получение конфига кластера
-          yc managed-kubernetes cluster get-credentials ${{ secrets.YC_K8S_CLUSTER_ID }} --external
-          
-          # 3. Установка Helm (в этом образе его может не быть, ставим быстро)
+          # Установка YC через официальный репозиторий
+          curl -sSL https://yandexcloud.net | bash -s -- -n
+          # Установка Helm
           curl https://githubusercontent.com | bash
+
+      - name: Deploy
+        run: |
+          # Явно указываем путь к yc в этой команде
+          export YC_PATH=$HOME/yandex-cloud/bin/yc
           
-          # 4. Деплой
+          # Настройка авторизации
+          echo '${{ secrets.YC_SA_JSON_KEY }}' > sa-key.json
+          $YC_PATH config profile create sa-profile
+          $YC_PATH config set service-account-key sa-key.json
+          
+          # Получение конфига и деплой
+          $YC_PATH managed-kubernetes cluster get-credentials ${{ secrets.YC_K8S_CLUSTER_ID }} --external
+          
           helm upgrade --install my-release ./my-app-chart \
             --set image=cr.yandex/${{ secrets.YC_REGISTRY_ID }}/diploma-app:${{ github.sha }}
