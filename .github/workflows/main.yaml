@@ -28,25 +28,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install YC CLI and Helm
+      - name: Deploy to K8s
         run: |
-          # Установка YC через официальный репозиторий
-          curl -sSL https://yandexcloud.net | bash -s -- -n
-          # Установка Helm
-          curl https://githubusercontent.com | bash
+          # 1. Скачиваем бинарник yc напрямую (без инсталлера)
+          curl -sSL https://yandexcloud.net -o ./yc
+          chmod +x ./yc
+          
+          # 2. Скачиваем Helm напрямую
+          curl -sSL https://helm.sh | tar xz
+          mv linux-amd64/helm ./helm
+          chmod +x ./helm
 
-      - name: Deploy
-        run: |
-          # Явно указываем путь к yc в этой команде
-          export YC_PATH=$HOME/yandex-cloud/bin/yc
-          
-          # Настройка авторизации
+          # 3. Настройка авторизации через локальный yc
           echo '${{ secrets.YC_SA_JSON_KEY }}' > sa-key.json
-          $YC_PATH config profile create sa-profile
-          $YC_PATH config set service-account-key sa-key.json
+          ./yc config profile create sa-profile
+          ./yc config set service-account-key sa-key.json
           
-          # Получение конфига и деплой
-          $YC_PATH managed-kubernetes cluster get-credentials ${{ secrets.YC_K8S_CLUSTER_ID }} --external
+          # 4. Получение конфига кластера
+          ./yc managed-kubernetes cluster get-credentials ${{ secrets.YC_K8S_CLUSTER_ID }} --external
           
-          helm upgrade --install my-release ./my-app-chart \
+          # 5. Деплой через локальный helm
+          ./helm upgrade --install my-release ./my-app-chart \
             --set image=cr.yandex/${{ secrets.YC_REGISTRY_ID }}/diploma-app:${{ github.sha }}
